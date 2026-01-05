@@ -1,0 +1,9 @@
+**/.DS_Store
+**/node_modules/
+.vscode/
+.nyc_output/
+coverage/
+output/
+*.log
+*.tgz
+.eslintcache

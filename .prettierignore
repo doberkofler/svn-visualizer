@@ -1,0 +1,6 @@
+# Ignore artifacts:
+*.md
+data
+dist
+coverage
+node_modules
