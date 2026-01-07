@@ -1,5 +1,4 @@
 import {spawn} from 'node:child_process';
-//import {z} from 'zod';
 
 /**
  * SVN export parameters
@@ -8,24 +7,23 @@ export type SvnExportParams = {
 	url: string;
 	username: string;
 	password: string;
-	startDate: Date;
-	endDate: Date;
+	startDate: Date | null;
+	endDate: Date | null;
 };
 
 /**
  * Execute SVN log command and return XML output
  */
 export async function exportSvnLog(params: SvnExportParams): Promise<string> {
-	const startRevision = `{${params.startDate.toISOString()}}`;
-	const endRevision = `{${params.endDate.toISOString()}}`;
+	const args = ['log', params.url, '--xml', '--verbose'];
 
-	const args = [
-		'log',
-		params.url,
-		'--xml',
-		'--verbose',
-		'--revision',
-		`${startRevision}:${endRevision}`,
+	if (params.startDate !== null && params.endDate !== null) {
+		const startRevision = `{${params.startDate.toISOString()}}`;
+		const endRevision = `{${params.endDate.toISOString()}}`;
+		args.push('--revision', `${startRevision}:${endRevision}`);
+	}
+
+	args.push(
 		'--username',
 		params.username,
 		'--password',
@@ -33,7 +31,7 @@ export async function exportSvnLog(params: SvnExportParams): Promise<string> {
 		'--non-interactive',
 		'--trust-server-cert-failures',
 		'unknown-ca,cn-mismatch,expired,not-yet-valid,other',
-	];
+	);
 
 	return new Promise<string>((resolve, reject) => {
 		const proc = spawn('svn', args);

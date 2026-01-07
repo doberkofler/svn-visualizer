@@ -7,3 +7,5 @@ output/
 *.log
 *.tgz
 .eslintcache
+svn_data.json
+
