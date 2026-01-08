@@ -10,6 +10,7 @@ export type AggregatedData = {
 	userDaily: Map<string, Map<string, number>>;
 	userWeekly: Map<string, Map<string, number>>;
 	userMonthly: Map<string, Map<string, number>>;
+	dateRange: {start: Date; end: Date};
 };
 
 /**
@@ -62,17 +63,27 @@ export function aggregateCommits(commits: Commit[], startDate: Date, endDate: Da
 	const userWeekly = new Map<string, Map<string, number>>();
 	const userMonthly = new Map<string, Map<string, number>>();
 
+	// Normalize start date to beginning of day
+	const normalizedStart = new Date(startDate);
+	normalizedStart.setHours(0, 0, 0, 0);
+
+	// Normalize end date to end of day
+	const normalizedEnd = new Date(endDate);
+	normalizedEnd.setHours(23, 59, 59, 999);
+
 	// Initialize all periods with 0
-	const current = new Date(startDate);
-	while (current <= endDate) {
+	const current = new Date(normalizedStart);
+	while (current <= normalizedEnd) {
 		daily.set(formatDay(current), 0);
 		weekly.set(formatWeek(current), 0);
 		monthly.set(formatMonth(current), 0);
 		current.setDate(current.getDate() + 1);
 	}
 
-	// Aggregate commits
-	for (const commit of commits) {
+	// Filter and aggregate commits within date range
+	const filteredCommits = commits.filter((c) => c.date >= normalizedStart && c.date <= normalizedEnd);
+
+	for (const commit of filteredCommits) {
 		const day = formatDay(commit.date);
 		const week = formatWeek(commit.date);
 		const month = formatMonth(commit.date);
@@ -113,5 +124,6 @@ export function aggregateCommits(commits: Commit[], startDate: Date, endDate: Da
 		userDaily,
 		userWeekly,
 		userMonthly,
+		dateRange: {start: normalizedStart, end: normalizedEnd},
 	};
 }

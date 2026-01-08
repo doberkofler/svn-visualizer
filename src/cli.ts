@@ -298,6 +298,9 @@ async function executeGather(args: GatherArgs): Promise<void> {
 /**
  * Execute generate command
  */
+/**
+ * Execute generate command
+ */
 async function executeGenerate(args: GenerateArgs): Promise<void> {
 	console.log('Loading data...');
 	const data = await deserializeData(args['data-file']);

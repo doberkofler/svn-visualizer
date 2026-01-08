@@ -9,12 +9,15 @@ import {generateBarChart, generateGroupedBarChart} from './svg.ts';
 export async function generateHtml(data: AggregatedData, outputDir: string): Promise<void> {
 	await mkdir(outputDir, {recursive: true});
 
+	const dateRange = data.dateRange;
+
 	const dailyChart = generateBarChart({
 		title: 'Commits per Day',
 		data: data.daily,
 		width: 1200,
 		height: 600,
 		color: '#4CAF50',
+		dateRange,
 	});
 
 	const weeklyChart = generateBarChart({
@@ -23,6 +26,7 @@ export async function generateHtml(data: AggregatedData, outputDir: string): Pro
 		width: 1200,
 		height: 600,
 		color: '#2196F3',
+		dateRange,
 	});
 
 	const monthlyChart = generateBarChart({
@@ -31,6 +35,7 @@ export async function generateHtml(data: AggregatedData, outputDir: string): Pro
 		width: 1200,
 		height: 600,
 		color: '#FF9800',
+		dateRange,
 	});
 
 	const colors = ['#F44336', '#9C27B0', '#3F51B5', '#009688', '#FFEB3B', '#795548', '#607D8B'];
@@ -41,6 +46,7 @@ export async function generateHtml(data: AggregatedData, outputDir: string): Pro
 		width: 1400,
 		height: 700,
 		colors,
+		dateRange,
 	});
 
 	const userWeeklyChart = generateGroupedBarChart({
@@ -49,6 +55,7 @@ export async function generateHtml(data: AggregatedData, outputDir: string): Pro
 		width: 1400,
 		height: 700,
 		colors,
+		dateRange,
 	});
 
 	const userMonthlyChart = generateGroupedBarChart({
@@ -57,6 +64,7 @@ export async function generateHtml(data: AggregatedData, outputDir: string): Pro
 		width: 1400,
 		height: 700,
 		colors,
+		dateRange,
 	});
 
 	const html = `<!DOCTYPE html>

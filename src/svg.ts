@@ -7,14 +7,15 @@ export type BarChartParams = {
 	width: number;
 	height: number;
 	color: string;
+	dateRange?: {start: Date; end: Date};
 };
 
 /**
  * Generate SVG bar chart
  */
 export function generateBarChart(params: BarChartParams): string {
-	const {title, data, width, height, color} = params;
-	const margin = {top: 60, right: 40, bottom: 80, left: 60};
+	const {title, data, width, height, color, dateRange} = params;
+	const margin = {top: 80, right: 40, bottom: 80, left: 60};
 	const chartWidth = width - margin.left - margin.right;
 	const chartHeight = height - margin.top - margin.bottom;
 
@@ -39,10 +40,18 @@ export function generateBarChart(params: BarChartParams): string {
 		})
 		.join('');
 
+	let subtitle = '';
+	if (dateRange !== undefined) {
+		const startStr = dateRange.start.toISOString().split('T')[0];
+		const endStr = dateRange.end.toISOString().split('T')[0];
+		subtitle = `<text x="${width / 2}" y="50" text-anchor="middle" font-size="14" fill="#666">${startStr} to ${endStr}</text>`;
+	}
+
 	return `
 		<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
 			<rect width="${width}" height="${height}" fill="white"/>
 			<text x="${width / 2}" y="30" text-anchor="middle" font-size="20" font-weight="bold">${title}</text>
+			${subtitle}
 			<line x1="${margin.left}" y1="${margin.top + chartHeight}" x2="${margin.left + chartWidth}" y2="${margin.top + chartHeight}" stroke="black" stroke-width="2"/>
 			<line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${margin.top + chartHeight}" stroke="black" stroke-width="2"/>
 			${bars}
@@ -59,14 +68,15 @@ export type GroupedBarChartParams = {
 	width: number;
 	height: number;
 	colors: string[];
+	dateRange?: {start: Date; end: Date};
 };
 
 /**
  * Generate SVG grouped bar chart (for per-user data)
  */
 export function generateGroupedBarChart(params: GroupedBarChartParams): string {
-	const {title, data, width, height, colors} = params;
-	const margin = {top: 80, right: 40, bottom: 80, left: 60};
+	const {title, data, width, height, colors, dateRange} = params;
+	const margin = {top: 100, right: 40, bottom: 80, left: 60};
 	const chartWidth = width - margin.left - margin.right;
 	const chartHeight = height - margin.top - margin.bottom;
 
@@ -122,7 +132,7 @@ export function generateGroupedBarChart(params: GroupedBarChartParams): string {
 				throw new Error(`No color available for user index ${i}`);
 			}
 			const x = margin.left + i * 150;
-			const y = 40;
+			const y = 60;
 			return `
 				<rect x="${x}" y="${y}" width="20" height="20" fill="${color}" />
 				<text x="${x + 25}" y="${y + 15}" font-size="12">${user}</text>
@@ -130,10 +140,18 @@ export function generateGroupedBarChart(params: GroupedBarChartParams): string {
 		})
 		.join('');
 
+	let subtitle = '';
+	if (dateRange !== undefined) {
+		const startStr = dateRange.start.toISOString().split('T')[0];
+		const endStr = dateRange.end.toISOString().split('T')[0];
+		subtitle = `<text x="${width / 2}" y="50" text-anchor="middle" font-size="14" fill="#666">${startStr} to ${endStr}</text>`;
+	}
+
 	return `
 		<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
 			<rect width="${width}" height="${height}" fill="white"/>
 			<text x="${width / 2}" y="25" text-anchor="middle" font-size="20" font-weight="bold">${title}</text>
+			${subtitle}
 			${legend}
 			<line x1="${margin.left}" y1="${margin.top + chartHeight}" x2="${margin.left + chartWidth}" y2="${margin.top + chartHeight}" stroke="black" stroke-width="2"/>
 			<line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${margin.top + chartHeight}" stroke="black" stroke-width="2"/>
