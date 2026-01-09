@@ -8,21 +8,14 @@ import {generateHtml} from './generator.ts';
 import {serializeData, deserializeData} from './serializer.ts';
 
 /**
- * Common arguments
- */
-const CommonArgsSchema = z.object({
-	command: z.enum(['gather', 'generate']),
-	'data-file': z.string().default('svn_data.json'),
-});
-
-/**
  * Gather command arguments
  */
-const GatherArgsSchema = CommonArgsSchema.extend({
+const GatherArgsSchema = z.strictObject({
 	command: z.literal('gather'),
-	url: z.string().url(),
+	url: z.url(),
 	username: z.string(),
 	password: z.string(),
+	'data-file': z.string().default('svn_data.json'),
 	'date-range': z.string().optional(),
 	'relative-days': z.coerce.number().int().positive().optional(),
 });
@@ -30,8 +23,9 @@ const GatherArgsSchema = CommonArgsSchema.extend({
 /**
  * Generate command arguments
  */
-const GenerateArgsSchema = CommonArgsSchema.extend({
+const GenerateArgsSchema = z.strictObject({
 	command: z.literal('generate'),
+	'data-file': z.string().default('svn_data.json'),
 	'output-dir': z.string().default('output'),
 	'date-range': z.string().optional(),
 	'relative-days': z.coerce.number().int().positive().optional(),
@@ -131,90 +125,89 @@ function parseCliArgs(): Args {
 		process.exit(1);
 	}
 
-	if (command !== 'gather' && command !== 'generate') {
-		console.error(`Error: Unknown command '${command}'\n`);
-		console.error('Available commands: gather, generate');
-		console.error('Use --help for more information\n');
-		process.exit(1);
-	}
-
 	const args = {command, ...values};
 
-	if (command === 'gather') {
-		if (values['output-dir'] !== undefined) {
-			console.error("Error: Invalid option '--output-dir' for gather command\n");
-			console.error("Did you mean '--data-file'?");
-			console.error('Use --help for more information\n');
-			process.exit(1);
-		}
+	switch (command) {
+		case 'gather': {
+			if (values['output-dir'] !== undefined) {
+				console.error("Error: Invalid option '--output-dir' for gather command\n");
+				console.error("Did you mean '--data-file'?");
+				console.error('Use --help for more information\n');
+				process.exit(1);
+			}
 
-		const result = GatherArgsSchema.safeParse(args);
-		if (!result.success) {
-			const issues = result.error.issues;
-			console.error('Error: Invalid arguments for gather command\n');
+			const result = GatherArgsSchema.safeParse(args);
+			if (!result.success) {
+				const issues = result.error.issues;
+				console.error('Error: Invalid arguments for gather command\n');
 
-			for (const issue of issues) {
-				const field = issue.path.join('.');
-				if (field === 'url') {
-					if (issue.code === 'invalid_type') {
-						console.error('  --url is required');
+				for (const issue of issues) {
+					const field = issue.path.join('.');
+					if (field === 'url') {
+						if (issue.code === 'invalid_type') {
+							console.error('  --url is required');
+						} else {
+							console.error('  --url must be a valid URL');
+						}
+					} else if (field === 'username') {
+						console.error('  --username is required');
+					} else if (field === 'password') {
+						console.error('  --password is required');
+					} else if (field === 'relative-days') {
+						console.error('  --relative-days must be a positive integer');
 					} else {
-						console.error('  --url must be a valid URL');
+						console.error(`  ${issue.message}`);
 					}
-				} else if (field === 'username') {
-					console.error('  --username is required');
-				} else if (field === 'password') {
-					console.error('  --password is required');
-				} else if (field === 'relative-days') {
-					console.error('  --relative-days must be a positive integer');
-				} else {
-					console.error(`  ${issue.message}`);
 				}
+
+				console.error('\nUse --help for more information\n');
+				process.exit(1);
 			}
 
-			console.error('\nUse --help for more information\n');
-			process.exit(1);
+			if (result.data['date-range'] !== undefined && result.data['relative-days'] !== undefined) {
+				console.error('Error: Cannot specify both --date-range and --relative-days\n');
+				console.error('Use --help for more information\n');
+				process.exit(1);
+			}
+
+			return result.data;
 		}
 
-		if (result.data['date-range'] !== undefined && result.data['relative-days'] !== undefined) {
-			console.error('Error: Cannot specify both --date-range and --relative-days\n');
+		case 'generate': {
+			if (values.url !== undefined || values.username !== undefined || values.password !== undefined) {
+				console.error("Error: Options '--url', '--username', and '--password' are only valid for gather command\n");
+				console.error('Use --help for more information\n');
+				process.exit(1);
+			}
+
+			const result = GenerateArgsSchema.safeParse(args);
+			if (!result.success) {
+				const issues = result.error.issues;
+				console.error('Error: Invalid arguments for generate command\n');
+
+				for (const issue of issues) {
+					const field = issue.path.join('.');
+					if (field === 'relative-days') {
+						console.error('  --relative-days must be a positive integer');
+					} else {
+						console.error(`  ${issue.message}`);
+					}
+				}
+
+				console.error('\nUse --help for more information\n');
+				process.exit(1);
+			}
+
+			return result.data;
+		}
+
+		default: {
+			console.error(`Error: Unknown command '${command}'\n`);
+			console.error('Available commands: gather, generate');
 			console.error('Use --help for more information\n');
 			process.exit(1);
 		}
-
-		return result.data;
 	}
-
-	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-	if (command === 'generate') {
-		if (values.url !== undefined || values.username !== undefined || values.password !== undefined) {
-			console.error("Error: Options '--url', '--username', and '--password' are only valid for gather command\n");
-			console.error('Use --help for more information\n');
-			process.exit(1);
-		}
-
-		const result = GenerateArgsSchema.safeParse(args);
-		if (!result.success) {
-			const issues = result.error.issues;
-			console.error('Error: Invalid arguments for generate command\n');
-
-			for (const issue of issues) {
-				const field = issue.path.join('.');
-				if (field === 'relative-days') {
-					console.error('  --relative-days must be a positive integer');
-				} else {
-					console.error(`  ${issue.message}`);
-				}
-			}
-
-			console.error('\nUse --help for more information\n');
-			process.exit(1);
-		}
-
-		return result.data;
-	}
-
-	throw new Error('Unreachable: unknown command');
 }
 
 /**
@@ -298,9 +291,6 @@ async function executeGather(args: GatherArgs): Promise<void> {
 /**
  * Execute generate command
  */
-/**
- * Execute generate command
- */
 async function executeGenerate(args: GenerateArgs): Promise<void> {
 	console.log('Loading data...');
 	const data = await deserializeData(args['data-file']);
@@ -335,10 +325,19 @@ async function executeGenerate(args: GenerateArgs): Promise<void> {
 async function main(): Promise<void> {
 	const args = parseCliArgs();
 
-	if (args.command === 'gather') {
-		await executeGather(args);
-	} else {
-		await executeGenerate(args);
+	switch (args.command) {
+		case 'gather':
+			await executeGather(args);
+			break;
+
+		case 'generate':
+			await executeGenerate(args);
+			break;
+
+		default: {
+			const exhaustiveCheck: never = args;
+			throw new Error(`Unhandled command: ${String(exhaustiveCheck)}`);
+		}
 	}
 }
 
