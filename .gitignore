@@ -1,0 +1,13 @@
+**/.DS_Store
+**/node_modules/
+.vscode/
+.nyc_output/
+coverage/
+output/
+dist/
+*.log
+*.tgz
+.eslintcache
+svn_data.json
+test.sh
+
