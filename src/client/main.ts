@@ -10,7 +10,7 @@ type ChartData = {
 	datasets: {
 		label: string;
 		data: number[];
-		backgroundColor: string;
+		backgroundColor: string | string[];
 		borderColor?: string;
 	}[];
 };
@@ -19,12 +19,11 @@ type ChartData = {
  * Chart data from JSON script tag
  */
 type ChartDataCollection = {
-	dailyData: ChartData;
-	weeklyData: ChartData;
-	monthlyData: ChartData;
-	userDailyData: ChartData;
-	userWeeklyData: ChartData;
-	userMonthlyData: ChartData;
+	last30DaysData: ChartData;
+	last12MonthsData: ChartData;
+	userTotalsData: ChartData;
+	byWeekdayData: ChartData;
+	byHourData: ChartData;
 };
 
 /**
@@ -49,7 +48,7 @@ function createBarChart(canvasId: string, data: ChartData, title: string): void 
 					font: {size: 20},
 				},
 				legend: {
-					display: data.datasets.length > 1,
+					display: false,
 				},
 			},
 			scales: {
@@ -58,6 +57,36 @@ function createBarChart(canvasId: string, data: ChartData, title: string): void 
 					ticks: {
 						precision: 0,
 					},
+				},
+			},
+		},
+	});
+}
+
+/**
+ * Create pie chart
+ */
+function createPieChart(canvasId: string, data: ChartData, title: string): void {
+	const canvas = document.getElementById(canvasId) as HTMLCanvasElement | null;
+	if (canvas === null) {
+		throw new Error(`Canvas element ${canvasId} not found`);
+	}
+
+	new Chart(canvas, {
+		type: 'pie',
+		data,
+		options: {
+			responsive: true,
+			maintainAspectRatio: false,
+			plugins: {
+				title: {
+					display: true,
+					text: title,
+					font: {size: 20},
+				},
+				legend: {
+					display: true,
+					position: 'right',
 				},
 			},
 		},
@@ -88,12 +117,11 @@ function loadChartData(): ChartDataCollection {
 function initCharts(): void {
 	const data = loadChartData();
 
-	createBarChart('chart-daily', data.dailyData, 'Commits per Day');
-	createBarChart('chart-weekly', data.weeklyData, 'Commits per Week');
-	createBarChart('chart-monthly', data.monthlyData, 'Commits per Month');
-	createBarChart('chart-user-daily', data.userDailyData, 'Commits per User (Daily)');
-	createBarChart('chart-user-weekly', data.userWeeklyData, 'Commits per User (Weekly)');
-	createBarChart('chart-user-monthly', data.userMonthlyData, 'Commits per User (Monthly)');
+	createBarChart('chart-last-30-days', data.last30DaysData, 'Commits per Day (Last 30 Days)');
+	createBarChart('chart-last-12-months', data.last12MonthsData, 'Commits per Month (Last 12 Months)');
+	createPieChart('chart-user-totals', data.userTotalsData, 'Commits by User');
+	createBarChart('chart-by-weekday', data.byWeekdayData, 'Commits by Weekday');
+	createBarChart('chart-by-hour', data.byHourData, 'Commits by Hour of Day');
 }
 
 // Initialize charts when DOM is ready

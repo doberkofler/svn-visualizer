@@ -11,7 +11,7 @@ type ChartData = {
 	datasets: {
 		label: string;
 		data: number[];
-		backgroundColor: string;
+		backgroundColor: string | string[];
 		borderColor?: string;
 	}[];
 };
@@ -20,134 +20,95 @@ type ChartData = {
  * Generate chart data objects
  */
 function generateChartData(data: AggregatedData): {
-	dailyData: ChartData;
-	weeklyData: ChartData;
-	monthlyData: ChartData;
-	userDailyData: ChartData;
-	userWeeklyData: ChartData;
-	userMonthlyData: ChartData;
+	last30DaysData: ChartData;
+	last12MonthsData: ChartData;
+	userTotalsData: ChartData;
+	byWeekdayData: ChartData;
+	byHourData: ChartData;
 } {
 	const colors = ['#F44336', '#9C27B0', '#3F51B5', '#009688', '#FFEB3B', '#795548', '#607D8B'];
 
-	// Daily data
-	const dailyLabels = Array.from(data.daily.keys()).sort();
-	const dailyValues = dailyLabels.map((label) => data.daily.get(label) ?? 0);
-	const dailyData: ChartData = {
-		labels: dailyLabels,
+	// Last 30 days
+	const last30DaysLabels = Array.from(data.last30Days.keys()).sort();
+	const last30DaysValues = last30DaysLabels.map((label) => data.last30Days.get(label) ?? 0);
+	const last30DaysData: ChartData = {
+		labels: last30DaysLabels,
 		datasets: [
 			{
 				label: 'Commits',
-				data: dailyValues,
+				data: last30DaysValues,
 				backgroundColor: '#4CAF50',
 			},
 		],
 	};
 
-	// Weekly data
-	const weeklyLabels = Array.from(data.weekly.keys()).sort();
-	const weeklyValues = weeklyLabels.map((label) => data.weekly.get(label) ?? 0);
-	const weeklyData: ChartData = {
-		labels: weeklyLabels,
+	// Last 12 months
+	const last12MonthsLabels = Array.from(data.last12Months.keys()).sort();
+	const last12MonthsValues = last12MonthsLabels.map((label) => data.last12Months.get(label) ?? 0);
+	const last12MonthsData: ChartData = {
+		labels: last12MonthsLabels,
 		datasets: [
 			{
 				label: 'Commits',
-				data: weeklyValues,
+				data: last12MonthsValues,
 				backgroundColor: '#2196F3',
 			},
 		],
 	};
 
-	// Monthly data
-	const monthlyLabels = Array.from(data.monthly.keys()).sort();
-	const monthlyValues = monthlyLabels.map((label) => data.monthly.get(label) ?? 0);
-	const monthlyData: ChartData = {
-		labels: monthlyLabels,
+	// User totals (pie chart)
+	const userLabels = Array.from(data.userTotals.keys());
+	const userValues = userLabels.map((label) => data.userTotals.get(label) ?? 0);
+	const userColors = userLabels.map((_, idx) => colors[idx % colors.length] ?? '#000000');
+	const userTotalsData: ChartData = {
+		labels: userLabels,
 		datasets: [
 			{
 				label: 'Commits',
-				data: monthlyValues,
+				data: userValues,
+				backgroundColor: userColors,
+			},
+		],
+	};
+
+	// By weekday
+	const weekdayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+	const weekdayValues = weekdayOrder.map((day) => data.byWeekday.get(day) ?? 0);
+	const byWeekdayData: ChartData = {
+		labels: weekdayOrder,
+		datasets: [
+			{
+				label: 'Commits',
+				data: weekdayValues,
 				backgroundColor: '#FF9800',
 			},
 		],
 	};
 
-	// User daily data
-	const userDailyLabels = new Set<string>();
-	for (const userMap of data.userDaily.values()) {
-		for (const period of userMap.keys()) {
-			userDailyLabels.add(period);
-		}
-	}
-	const userDailyLabelsSorted = Array.from(userDailyLabels).sort();
-	const users = Array.from(data.userDaily.keys());
-	const userDailyData: ChartData = {
-		labels: userDailyLabelsSorted,
-		datasets: users.map((user, idx) => {
-			const userMap = data.userDaily.get(user);
-			if (userMap === undefined) {
-				throw new Error(`User map not found for ${user}`);
-			}
-			return {
-				label: user,
-				data: userDailyLabelsSorted.map((label) => userMap.get(label) ?? 0),
-				backgroundColor: colors[idx % colors.length] ?? '#000000',
-			};
-		}),
-	};
-
-	// User weekly data
-	const userWeeklyLabels = new Set<string>();
-	for (const userMap of data.userWeekly.values()) {
-		for (const period of userMap.keys()) {
-			userWeeklyLabels.add(period);
-		}
-	}
-	const userWeeklyLabelsSorted = Array.from(userWeeklyLabels).sort();
-	const userWeeklyData: ChartData = {
-		labels: userWeeklyLabelsSorted,
-		datasets: users.map((user, idx) => {
-			const userMap = data.userWeekly.get(user);
-			if (userMap === undefined) {
-				throw new Error(`User map not found for ${user}`);
-			}
-			return {
-				label: user,
-				data: userWeeklyLabelsSorted.map((label) => userMap.get(label) ?? 0),
-				backgroundColor: colors[idx % colors.length] ?? '#000000',
-			};
-		}),
-	};
-
-	// User monthly data
-	const userMonthlyLabels = new Set<string>();
-	for (const userMap of data.userMonthly.values()) {
-		for (const period of userMap.keys()) {
-			userMonthlyLabels.add(period);
-		}
-	}
-	const userMonthlyLabelsSorted = Array.from(userMonthlyLabels).sort();
-	const userMonthlyData: ChartData = {
-		labels: userMonthlyLabelsSorted,
-		datasets: users.map((user, idx) => {
-			const userMap = data.userMonthly.get(user);
-			if (userMap === undefined) {
-				throw new Error(`User map not found for ${user}`);
-			}
-			return {
-				label: user,
-				data: userMonthlyLabelsSorted.map((label) => userMap.get(label) ?? 0),
-				backgroundColor: colors[idx % colors.length] ?? '#000000',
-			};
-		}),
+	// By hour
+	const hourLabels = Array.from(data.byHour.keys())
+		.sort((a, b) => a - b)
+		.map((h) => `${String(h).padStart(2, '0')}:00`);
+	const hourValues = Array.from(data.byHour.keys())
+		.sort((a, b) => a - b)
+		.map((h) => data.byHour.get(h) ?? 0);
+	const byHourData: ChartData = {
+		labels: hourLabels,
+		datasets: [
+			{
+				label: 'Commits',
+				data: hourValues,
+				backgroundColor: '#9C27B0',
+			},
+		],
 	};
 
 	return {
-		dailyData,
-		weeklyData,
-		monthlyData,
-		userDailyData,
-		userWeeklyData,
-		userMonthlyData,
+		last30DaysData,
+		last12MonthsData,
+		userTotalsData,
+		byWeekdayData,
+		byHourData,
 	};
 }
 
@@ -201,6 +162,9 @@ export async function generateHtml(data: AggregatedData, outputDir: string): Pro
 			max-width: 1440px;
 			height: 500px;
 		}
+		.chart.pie {
+			height: 600px;
+		}
 	</style>
 </head>
 <body>
@@ -208,27 +172,23 @@ export async function generateHtml(data: AggregatedData, outputDir: string): Pro
 	<div class="subtitle">${startStr} to ${endStr}</div>
 	
 	<div class="chart">
-		<canvas id="chart-daily"></canvas>
+		<canvas id="chart-last-30-days"></canvas>
 	</div>
 	
 	<div class="chart">
-		<canvas id="chart-weekly"></canvas>
+		<canvas id="chart-last-12-months"></canvas>
+	</div>
+	
+	<div class="chart pie">
+		<canvas id="chart-user-totals"></canvas>
 	</div>
 	
 	<div class="chart">
-		<canvas id="chart-monthly"></canvas>
+		<canvas id="chart-by-weekday"></canvas>
 	</div>
 	
 	<div class="chart">
-		<canvas id="chart-user-daily"></canvas>
-	</div>
-	
-	<div class="chart">
-		<canvas id="chart-user-weekly"></canvas>
-	</div>
-	
-	<div class="chart">
-		<canvas id="chart-user-monthly"></canvas>
+		<canvas id="chart-by-hour"></canvas>
 	</div>
 	
 	<script id="chart-data" type="application/json">

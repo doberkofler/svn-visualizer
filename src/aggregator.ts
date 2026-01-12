@@ -4,26 +4,13 @@ import {type Commit} from './parser.ts';
  * Aggregated commit data
  */
 export type AggregatedData = {
-	daily: Map<string, number>;
-	weekly: Map<string, number>;
-	monthly: Map<string, number>;
-	userDaily: Map<string, Map<string, number>>;
-	userWeekly: Map<string, Map<string, number>>;
-	userMonthly: Map<string, Map<string, number>>;
+	last30Days: Map<string, number>;
+	last12Months: Map<string, number>;
+	userTotals: Map<string, number>;
+	byWeekday: Map<string, number>;
+	byHour: Map<number, number>;
 	dateRange: {start: Date; end: Date};
 };
-
-/**
- * Get ISO week number (Monday = start of week)
- */
-function getIsoWeek(date: Date): {year: number; week: number} {
-	const d = new Date(date);
-	d.setHours(0, 0, 0, 0);
-	d.setDate(d.getDate() + 4 - (d.getDay() || 7));
-	const yearStart = new Date(d.getFullYear(), 0, 1);
-	const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-	return {year: d.getFullYear(), week: weekNo};
-}
 
 /**
  * Format date as YYYY-MM-DD
@@ -36,14 +23,6 @@ function formatDay(date: Date): string {
 }
 
 /**
- * Format week as YYYY-Wxx
- */
-function formatWeek(date: Date): string {
-	const {year, week} = getIsoWeek(date);
-	return `${year}-W${String(week).padStart(2, '0')}`;
-}
-
-/**
  * Format month as YYYY-MM
  */
 function formatMonth(date: Date): string {
@@ -53,16 +32,17 @@ function formatMonth(date: Date): string {
 }
 
 /**
+ * Get weekday name
+ */
+function getWeekdayName(date: Date): string {
+	const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+	return days[date.getDay()] ?? 'Unknown';
+}
+
+/**
  * Aggregate commits by time period and user
  */
 export function aggregateCommits(commits: Commit[], startDate: Date, endDate: Date): AggregatedData {
-	const daily = new Map<string, number>();
-	const weekly = new Map<string, number>();
-	const monthly = new Map<string, number>();
-	const userDaily = new Map<string, Map<string, number>>();
-	const userWeekly = new Map<string, Map<string, number>>();
-	const userMonthly = new Map<string, Map<string, number>>();
-
 	// Normalize start date to beginning of day
 	const normalizedStart = new Date(startDate);
 	normalizedStart.setHours(0, 0, 0, 0);
@@ -71,59 +51,87 @@ export function aggregateCommits(commits: Commit[], startDate: Date, endDate: Da
 	const normalizedEnd = new Date(endDate);
 	normalizedEnd.setHours(23, 59, 59, 999);
 
-	// Initialize all periods with 0
-	const current = new Date(normalizedStart);
-	while (current <= normalizedEnd) {
-		daily.set(formatDay(current), 0);
-		weekly.set(formatWeek(current), 0);
-		monthly.set(formatMonth(current), 0);
-		current.setDate(current.getDate() + 1);
-	}
-
-	// Filter and aggregate commits within date range
+	// Filter commits within date range
 	const filteredCommits = commits.filter((c) => c.date >= normalizedStart && c.date <= normalizedEnd);
 
+	// Last 30 days
+	const last30Days = new Map<string, number>();
+	const thirtyDaysAgo = new Date();
+	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+	thirtyDaysAgo.setHours(0, 0, 0, 0);
+
+	for (let i = 0; i < 30; i++) {
+		const date = new Date(thirtyDaysAgo);
+		date.setDate(date.getDate() + i);
+		last30Days.set(formatDay(date), 0);
+	}
+
 	for (const commit of filteredCommits) {
-		const day = formatDay(commit.date);
-		const week = formatWeek(commit.date);
-		const month = formatMonth(commit.date);
-
-		// Total counts
-		daily.set(day, (daily.get(day) ?? 0) + 1);
-		weekly.set(week, (weekly.get(week) ?? 0) + 1);
-		monthly.set(month, (monthly.get(month) ?? 0) + 1);
-
-		// User counts
-		if (!userDaily.has(commit.author)) {
-			userDaily.set(commit.author, new Map<string, number>());
+		if (commit.date >= thirtyDaysAgo) {
+			const day = formatDay(commit.date);
+			last30Days.set(day, (last30Days.get(day) ?? 0) + 1);
 		}
-		if (!userWeekly.has(commit.author)) {
-			userWeekly.set(commit.author, new Map<string, number>());
-		}
-		if (!userMonthly.has(commit.author)) {
-			userMonthly.set(commit.author, new Map<string, number>());
-		}
+	}
 
-		const authorDaily = userDaily.get(commit.author);
-		const authorWeekly = userWeekly.get(commit.author);
-		const authorMonthly = userMonthly.get(commit.author);
+	// Last 12 months
+	const last12Months = new Map<string, number>();
+	const twelveMonthsAgo = new Date();
+	twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+	twelveMonthsAgo.setDate(1);
+	twelveMonthsAgo.setHours(0, 0, 0, 0);
 
-		if (authorDaily === undefined || authorWeekly === undefined || authorMonthly === undefined) {
-			throw new Error(`Failed to initialize user maps for ${commit.author}`);
+	for (let i = 0; i < 12; i++) {
+		const date = new Date(twelveMonthsAgo);
+		date.setMonth(date.getMonth() + i);
+		last12Months.set(formatMonth(date), 0);
+	}
+
+	for (const commit of filteredCommits) {
+		if (commit.date >= twelveMonthsAgo) {
+			const month = formatMonth(commit.date);
+			last12Months.set(month, (last12Months.get(month) ?? 0) + 1);
 		}
+	}
 
-		authorDaily.set(day, (authorDaily.get(day) ?? 0) + 1);
-		authorWeekly.set(week, (authorWeekly.get(week) ?? 0) + 1);
-		authorMonthly.set(month, (authorMonthly.get(month) ?? 0) + 1);
+	// User totals
+	const userTotals = new Map<string, number>();
+	for (const commit of filteredCommits) {
+		userTotals.set(commit.author, (userTotals.get(commit.author) ?? 0) + 1);
+	}
+
+	// By weekday
+	const byWeekday = new Map<string, number>([
+		['Monday', 0],
+		['Tuesday', 0],
+		['Wednesday', 0],
+		['Thursday', 0],
+		['Friday', 0],
+		['Saturday', 0],
+		['Sunday', 0],
+	]);
+
+	for (const commit of filteredCommits) {
+		const weekday = getWeekdayName(commit.date);
+		byWeekday.set(weekday, (byWeekday.get(weekday) ?? 0) + 1);
+	}
+
+	// By hour
+	const byHour = new Map<number, number>();
+	for (let i = 0; i < 24; i++) {
+		byHour.set(i, 0);
+	}
+
+	for (const commit of filteredCommits) {
+		const hour = commit.date.getHours();
+		byHour.set(hour, (byHour.get(hour) ?? 0) + 1);
 	}
 
 	return {
-		daily,
-		weekly,
-		monthly,
-		userDaily,
-		userWeekly,
-		userMonthly,
+		last30Days,
+		last12Months,
+		userTotals,
+		byWeekday,
+		byHour,
 		dateRange: {start: normalizedStart, end: normalizedEnd},
 	};
 }
