@@ -31,15 +31,34 @@ The tool has two separate commands:
 1. **`gather`** - Fetch commit data from SVN and save to a local file
 2. **`generate`** - Generate HTML visualizations from saved data
 
+Both commands always use `svn_data.json` as the data file.
+
+### Build Client Code
+
+Before generating HTML, build the client-side JavaScript:
+```bash
+npm run build:client
+```
+
 ### Gather Command
 
-Fetch commit data from SVN repository and serialize to JSON:
-```bash
-# Last 30 days
-node --experimental-strip-types src/cli.ts gather --url https://svn.example.com/repo --username myuser --password mypass --relative-days 30
+Fetch commit data from SVN repository and serialize to JSON. Data is always saved to `svn_data.json`.
 
-# Specific date range
-node --experimental-strip-types src/cli.ts gather --url https://svn.example.com/repo --username myuser --password mypass --date-range 2024-01-01:2024-12-31
+The tool works incrementally:
+- **First run**: If `svn_data.json` doesn't exist, all repository history is fetched
+- **Subsequent runs**: If `svn_data.json` exists, only new commits since the last gather are fetched and merged
+```bash
+# First run - fetches all history
+node --experimental-strip-types src/gather.ts \
+	--url https://svn.example.com/repo \
+	--username myuser \
+	--password mypass
+
+# Subsequent runs - fetches only new commits
+node --experimental-strip-types src/gather.ts \
+	--url https://svn.example.com/repo \
+	--username myuser \
+	--password mypass
 ```
 
 #### Gather Arguments
@@ -49,34 +68,65 @@ node --experimental-strip-types src/cli.ts gather --url https://svn.example.com/
 | `--url` | Yes | SVN repository URL |
 | `--username` | Yes | SVN authentication username |
 | `--password` | Yes | SVN authentication password |
-| `--data-file` | Yes | Path to save serialized commit data |
-| `--date-range` | Conditional* | Date range in format `YYYY-MM-DD:YYYY-MM-DD` |
-| `--relative-days` | Conditional* | Number of days to look back from today |
 
-*Either `--date-range` or `--relative-days` must be provided, but not both.
+- Data is always saved to `svn_data.json`
+- Automatically detects if data file exists and works incrementally
+- To fetch all history again, delete `svn_data.json` first
 
 ### Generate Command
 
-Generate HTML visualizations from previously gathered data:
+Generate HTML visualizations from `svn_data.json`:
 ```bash
-# Use date range from data file
-node --experimental-strip-types src/cli.ts generate
+# Use defaults (svn_data.json → output/)
+node --experimental-strip-types src/generate.ts
+
+# Use custom output directory
+node --experimental-strip-types src/generate.ts \
+	--output-dir ./reports
 
 # Override with custom date range
-node --experimental-strip-types src/cli.ts generate --relative-days 7
-
-# Override with specific date range
-node --experimental-strip-types src/cli.ts generate --date-range 2024-06-01:2024-12-31
+node --experimental-strip-types src/generate.ts \
+	--output-dir ./output \
+	--relative-days 7
 ```
 
 #### Generate Arguments
 
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `--data-file` | Yes | Path to serialized commit data |
-| `--output-dir` | Yes | Directory for generated HTML output |
-| `--date-range` | No | Override date range for aggregation |
-| `--relative-days` | No | Override with relative date range |
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `--output-dir` | No | `output` | Directory for generated HTML output |
+| `--date-range` | No | - | Override date range for aggregation (YYYY-MM-DD:YYYY-MM-DD) |
+| `--relative-days` | No | - | Override with relative date range |
 
-If no date range arguments are provided, the date range stored in the data file is used.
+- Data is always read from `svn_data.json`
+- If no date range arguments are provided, the date range stored in the data file is used
 
+### Workflow Examples
+```bash
+# Initial gather (fetches all history)
+node --experimental-strip-types src/gather.ts \
+	--url https://svn.example.com/repo \
+	--username myuser \
+	--password mypass
+
+# Generate visualizations
+npm run build:client
+node --experimental-strip-types src/generate.ts
+
+# Daily incremental update (fetches only new commits)
+node --experimental-strip-types src/gather.ts \
+	--url https://svn.example.com/repo \
+	--username myuser \
+	--password mypass
+
+# Regenerate with different date range
+node --experimental-strip-types src/generate.ts \
+	--relative-days 30
+
+# Start fresh (delete data file and refetch all history)
+rm svn_data.json
+node --experimental-strip-types src/gather.ts \
+	--url https://svn.example.com/repo \
+	--username myuser \
+	--password mypass
+```

@@ -9,5 +9,5 @@ dist/
 *.tgz
 .eslintcache
 svn_data.json
-test.sh
+test_gather.sh
 
