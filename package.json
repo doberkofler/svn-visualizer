@@ -21,6 +21,9 @@
 		"url": "https://github.com/doberkofler/svn-visualizer.git"
 	},
 	"bin": "./dist/index.js",
+	"files": [
+		"dist"
+	],
 	"type": "module",
 	"scripts": {
 		"typecheck": "tsc --noEmit",
@@ -30,6 +33,7 @@
 		"ci": "pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run build && pnpm run test",
 		"test": "vitest run --coverage",
 		"release": "release-it",
+		"prepublishOnly": "pnpm run build",
 		"create-changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",
 		"prepare": "husky",
 		"svn-visualizer": "node dist/index.js",
