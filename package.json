@@ -1,6 +1,6 @@
 {
 	"name": "svn-visualizer",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Generate standalone HTML activity reports from Subversion history.",
 	"keywords": [
 		"charts",
