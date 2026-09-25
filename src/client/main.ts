@@ -22,15 +22,28 @@ const data = JSON.parse(reportText) as BrowserData;
 const charts: Chart[] = [];
 const accent = '#f3b33d';
 const cool = '#6dc8bf';
-const common = {
-	responsive: true,
-	maintainAspectRatio: false,
-	plugins: {legend: {display: false}},
+
+function chartOptions(): {
+	responsive: boolean;
+	maintainAspectRatio: boolean;
+	layout: {padding: {right: number}};
+	plugins: {legend: {display: boolean; position?: 'bottom'; labels?: {color: string}}};
 	scales: {
-		x: {ticks: {color: '#aaa69d'}, grid: {color: '#34413e'}},
-		y: {beginAtZero: true, ticks: {color: '#aaa69d', precision: 0}, grid: {color: '#34413e'}},
-	},
-} as const;
+		x: {offset: boolean; stacked?: boolean; ticks: {color: string}; grid: {color: string; offset: boolean}};
+		y: {beginAtZero: boolean; stacked?: boolean; ticks: {color: string; precision: number}; grid: {color: string}};
+	};
+} {
+	return {
+		responsive: true,
+		maintainAspectRatio: false,
+		layout: {padding: {right: 8}},
+		plugins: {legend: {display: false}},
+		scales: {
+			x: {offset: true, ticks: {color: '#aaa69d'}, grid: {color: '#34413e', offset: true}},
+			y: {beginAtZero: true, ticks: {color: '#aaa69d', precision: 0}, grid: {color: '#34413e'}},
+		},
+	};
+}
 
 function chart(id: string, series: Series, type: 'bar' | 'line', color: string): void {
 	const canvas = document.querySelector<HTMLCanvasElement>(`#${id}`);
@@ -44,7 +57,7 @@ function chart(id: string, series: Series, type: 'bar' | 'line', color: string):
 				labels: series.labels,
 				datasets: [{data: series.values, borderColor: color, backgroundColor: `${color}99`, fill: type === 'line', tension: 0.25}],
 			},
-			options: common,
+			options: chartOptions(),
 		}),
 	);
 }
@@ -56,6 +69,10 @@ function stackedChart(id: string, series: StackedSeries): void {
 	if (canvas === null) {
 		return;
 	}
+	const options = chartOptions();
+	options.plugins.legend = {display: true, position: 'bottom', labels: {color: '#aaa69d'}};
+	options.scales.x.stacked = true;
+	options.scales.y.stacked = true;
 	charts.push(
 		new Chart(canvas, {
 			type: 'bar',
@@ -68,21 +85,14 @@ function stackedChart(id: string, series: StackedSeries): void {
 					borderColor: palette[index % palette.length] ?? accent,
 				})),
 			},
-			options: {
-				...common,
-				plugins: {legend: {display: true, position: 'bottom', labels: {color: '#aaa69d'}}},
-				scales: {
-					x: {...common.scales.x, stacked: true},
-					y: {...common.scales.y, stacked: true},
-				},
-			},
+			options,
 		}),
 	);
 }
 
 chart('days', data.days, 'line', accent);
 stackedChart('days-by-user', data.daysByUser);
-chart('months', data.months, 'bar', cool);
+chart('months', data.months, 'line', cool);
 chart('users', data.users, 'bar', accent);
 chart('weekdays', data.weekdays, 'bar', cool);
 chart('hours', data.hours, 'bar', accent);

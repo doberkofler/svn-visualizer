@@ -55,11 +55,11 @@ export function renderHtml(data: PageData, clientScript: string): string {
 		<section class="grid">
 			<article class="card wide"><h2>Last 30 days</h2><div class="chart"><canvas id="days" role="img" aria-label="Commits per day">Chart: commits per day.</canvas></div></article>
 			<article class="card wide"><h2>Commits per day and user</h2><div class="chart"><canvas id="days-by-user" role="img" aria-label="Commits per day and user">Chart: commits per day and user.</canvas></div></article>
-			<article class="card wide"><h2>Current and previous 11 months</h2><div class="chart"><canvas id="months" role="img" aria-label="Commits per month">Chart: commits per month.</canvas></div></article>
+			<article class="card wide"><h2>Commits per month</h2><div class="chart"><canvas id="months" role="img" aria-label="Commits per month over the selected period">Chart: commits per month.</canvas></div></article>
 			<article class="card"><h2>Contributors</h2><div class="chart"><canvas id="users" role="img" aria-label="Commits by contributor">Chart: commits by contributor.</canvas></div></article>
 			<article class="card"><h2>Weekday</h2><div class="chart"><canvas id="weekdays" role="img" aria-label="Commits by weekday in UTC">Chart: commits by weekday in UTC.</canvas></div></article>
 			<article class="card wide"><h2>Hour of day (UTC)</h2><div class="chart"><canvas id="hours" role="img" aria-label="Commits by hour in UTC">Chart: commits by hour in UTC.</canvas></div></article>
-			<article class="card wide"><h2>Recent commits</h2><table class="commits"><thead><tr><th>Revision</th><th>Author</th><th>Date (UTC)</th><th>Message</th></tr></thead><tbody id="commits"></tbody></table></article>
+			<article class="card wide"><h2>Recent commits (${escapeHtml(data.recentRange.from)} to ${escapeHtml(data.recentRange.to)})</h2><table class="commits"><thead><tr><th>Revision</th><th>Author</th><th>Date (UTC)</th><th>Message</th></tr></thead><tbody id="commits"></tbody></table></article>
 		</section>
 		<footer>Generated ${escapeHtml(data.generatedAt)} · All dates and times UTC</footer>
 	</main>

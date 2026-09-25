@@ -5,7 +5,7 @@ const DAY_MS = 86_400_000;
 const dateTextSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, 'Expected YYYY-MM-DD');
 
 export const DEFAULT_CONTRIBUTORS = 10;
-export const DEFAULT_RECENT = 20;
+export const RECENT_DAYS = 30;
 export const OTHER_CONTRIBUTORS_LABEL = '(others)';
 
 export type DateRange = {readonly from: string; readonly to: string};
@@ -14,6 +14,7 @@ export type StackedDataset = {readonly label: string; readonly values: number[]}
 export type StackedSeries = {readonly labels: string[]; readonly datasets: StackedDataset[]};
 export type ReportData = {
 	readonly range: DateRange;
+	readonly recentRange: DateRange;
 	readonly total: number;
 	readonly users: Series;
 	readonly weekdays: Series;
@@ -110,11 +111,20 @@ function countStackedSeries(
 	return {labels: [...labels], datasets: buckets.map((bucket) => ({label: bucket, values: [...(bucketValues.get(bucket) ?? [])]}))};
 }
 
-function monthLabels(end: string): string[] {
-	const endDate = parseDateText(end);
+function monthLabels(from: string, to: string): string[] {
+	const start = parseDateText(from);
+	const end = parseDateText(to);
 	const result: string[] = [];
-	for (let offset = 11; offset >= 0; offset--) {
-		result.push(dateText(new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth() - offset, 1))).slice(0, 7));
+	for (
+		let month = start.getUTCMonth(), year = start.getUTCFullYear();
+		year < end.getUTCFullYear() || (year === end.getUTCFullYear() && month <= end.getUTCMonth());
+		month++
+	) {
+		if (month > 11) {
+			month = 0;
+			year++;
+		}
+		result.push(`${String(year).padStart(4, '0')}-${String(month + 1).padStart(2, '0')}`);
 	}
 	return result;
 }
@@ -161,9 +171,11 @@ export function aggregate(commits: readonly Commit[], range: DateRange): ReportD
 	}
 	const weekdayLabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 	const hourLabels = Array.from({length: 24}, (_, hour) => hour.toString().padStart(2, '0'));
-	const dayLabels = Array.from({length: 30}, (_, index) => addDays(range.to, index - 29));
-	const months = monthLabels(range.to);
-	const recent = [...selected].sort((left, right) => right.revision - left.revision).slice(0, DEFAULT_RECENT);
+	const dayLabels = Array.from({length: RECENT_DAYS}, (_, index) => addDays(range.to, index - (RECENT_DAYS - 1)));
+	const monthLabelsList = monthLabels(range.from, range.to);
+	const recentFrom = addDays(range.to, 1 - RECENT_DAYS) > range.from ? addDays(range.to, 1 - RECENT_DAYS) : range.from;
+	const recentRange: DateRange = {from: recentFrom, to: range.to};
+	const recent = selected.filter((commit) => commit.date.slice(0, 10) >= recentFrom).sort((left, right) => right.revision - left.revision);
 	const daysByUser = countStackedSeries(
 		dayLabels,
 		userLabels,
@@ -174,6 +186,7 @@ export function aggregate(commits: readonly Commit[], range: DateRange): ReportD
 	);
 	return {
 		range,
+		recentRange,
 		total: selected.length,
 		users: {labels: userLabels, values: userValues},
 		weekdays: countSeries(
@@ -190,7 +203,7 @@ export function aggregate(commits: readonly Commit[], range: DateRange): ReportD
 		),
 		daysByUser,
 		months: countSeries(
-			months,
+			monthLabelsList,
 			selected.map((commit) => commit.date.slice(0, 7)),
 		),
 		recent,
